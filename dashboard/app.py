@@ -162,8 +162,8 @@ st.markdown("""
 <style>
 /* Global */
 .stApp {
-    background: #07111f;
-    color: #ffffff;
+    background: #f5f7fa;
+    color: #1a2433;
 }
 
 .block-container {
@@ -174,12 +174,12 @@ st.markdown("""
 
 /* Sidebar */
 [data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #19304f 0%, #162943 100%);
-    border-right: 1px solid rgba(255,255,255,0.08);
+    background: #ffffff;
+    border-right: 1px solid #e3e8ee;
 }
 
 [data-testid="stSidebar"] * {
-    color: white;
+    color: #1a2433;
 }
 
 [data-testid="stSidebar"] .stSelectbox label,
@@ -188,20 +188,21 @@ st.markdown("""
 }
 
 [data-testid="stSidebar"] div[data-baseweb="select"] > div {
-    background-color: #233d5c !important;
-    border: 1px solid #3f5f86 !important;
+    background-color: #f5f7fa !important;
+    border: 1px solid #d6dde8 !important;
     border-radius: 10px !important;
 }
 
 [data-testid="stSidebar"] span[data-baseweb="tag"] {
     background-color: #2f6db5 !important;
+    color: #ffffff !important;
 }
 
 /* Sidebar brand */
 .sidebar-brand {
     padding: 8px 0 18px 0;
     margin-bottom: 18px;
-    border-bottom: 1px solid rgba(255,255,255,0.12);
+    border-bottom: 1px solid #e3e8ee;
 }
 
 .brand-row {
@@ -219,13 +220,14 @@ st.markdown("""
     font-size: 24px;
     font-weight: 900;
     letter-spacing: 0.02em;
+    color: #1a2433;
 }
 
 .brand-sub {
     font-size: 12px;
     font-weight: 700;
     letter-spacing: 0.18em;
-    color: #dbe8f5;
+    color: #5a7088;
     margin-left: 42px;
 }
 
@@ -234,7 +236,7 @@ st.markdown("""
     font-weight: 900;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: #9fc1e8;
+    color: #2f6db5;
     margin-top: 18px;
     margin-bottom: 4px;
 }
@@ -243,13 +245,13 @@ st.markdown("""
 .page-title {
     font-size: 44px;
     font-weight: 900;
-    color: #ffffff;
+    color: #1a2433;
     margin-bottom: 4px;
 }
 
 .page-subtitle {
     font-size: 15px;
-    color: #9fb1c4;
+    color: #5a7088;
     margin-bottom: 28px;
 }
 
@@ -259,7 +261,7 @@ st.markdown("""
     border-radius: 16px;
     padding: 20px 24px;
     border: 1px solid #d6dde8;
-    box-shadow: 0 8px 22px rgba(0,0,0,0.15);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
     min-height: 110px;
     margin-bottom: 14px;
 }
@@ -269,7 +271,7 @@ st.markdown("""
     font-weight: 900;
     letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: #35506f;
+    color: #5a7088;
     margin-bottom: 12px;
 }
 
@@ -282,11 +284,11 @@ st.markdown("""
 }
 
 .metric-card {
-    background: linear-gradient(135deg, #16263d 0%, #20385b 100%);
-    border: 1px solid #35537d;
+    background: #ffffff;
+    border: 1px solid #d6dde8;
     border-radius: 18px;
     padding: 24px 28px;
-    box-shadow: 0 10px 24px rgba(0,0,0,0.22);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
     min-height: 125px;
     margin-bottom: 6px;
 }
@@ -294,30 +296,32 @@ st.markdown("""
 .metric-label {
     font-size: 14px;
     font-weight: 800;
-    color: #d4deea;
+    color: #5a7088;
     margin-bottom: 14px;
 }
 
 .metric-value {
     font-size: 44px;
     font-weight: 900;
-    color: #ffffff;
+    color: #1a2433;
     line-height: 1.1;
 }
 
 /* Tone variants — dipakai untuk menandai posisi norm (good/avg/bad) */
 .metric-card--good {
-    background: linear-gradient(135deg, #103a26 0%, #1d5c3c 100%);
+    background: #f0faf4;
     border: 1px solid #2f9e66;
 }
+.metric-card--good .metric-value { color: #1d7a44; }
 .metric-card--avg {
-    background: linear-gradient(135deg, #16263d 0%, #20385b 100%);
-    border: 1px solid #35537d;
+    background: #ffffff;
+    border: 1px solid #d6dde8;
 }
 .metric-card--bad {
-    background: linear-gradient(135deg, #3a1414 0%, #5c2020 100%);
+    background: #fdf2f2;
     border: 1px solid #c0504d;
 }
+.metric-card--bad .metric-value { color: #b23b38; }
 
 /* Positioning badge */
 .pos-badge {
@@ -328,22 +332,22 @@ st.markdown("""
     font-size: 16px;
     margin-bottom: 14px;
 }
-.pos-badge--good { background: #1d5c3c; color: #b6f3d2; border: 1px solid #2f9e66; }
-.pos-badge--avg  { background: #20385b; color: #d4e6fb; border: 1px solid #35537d; }
-.pos-badge--bad  { background: #5c2020; color: #fbd4d4; border: 1px solid #c0504d; }
+.pos-badge--good { background: #f0faf4; color: #1d7a44; border: 1px solid #2f9e66; }
+.pos-badge--avg  { background: #eef3fa; color: #2f6db5; border: 1px solid #a9c3e3; }
+.pos-badge--bad  { background: #fdf2f2; color: #b23b38; border: 1px solid #c0504d; }
 
 /* Section title */
 .section-title {
     font-size: 30px;
     font-weight: 900;
-    color: #ffffff;
+    color: #1a2433;
     margin-top: 26px;
     margin-bottom: 14px;
 }
 
 /* DataFrame */
 [data-testid="stDataFrame"] {
-    border: 1px solid rgba(255,255,255,0.08);
+    border: 1px solid #e3e8ee;
     border-radius: 14px;
     overflow: hidden;
 }
@@ -351,16 +355,16 @@ st.markdown("""
 /* Download buttons */
 .stDownloadButton button {
     width: 100%;
-    background: #d9e6f3 !important;
-    color: #0b1a2b !important;
-    border: 1px solid #5a7598 !important;
+    background: #2f6db5 !important;
+    color: #ffffff !important;
+    border: 1px solid #2f6db5 !important;
     border-radius: 10px !important;
     font-weight: 800 !important;
     padding: 0.55rem 1rem !important;
 }
 
 .stDownloadButton button:hover {
-    background: #edf4fb !important;
+    background: #25588f !important;
 }
 
 /* Alert */
@@ -595,7 +599,7 @@ else:
                 )
                 fig_pct.update_layout(
                     plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
-                    font_color="#ffffff", legend_title_text="Metric", yaxis_range=[0, 105]
+                    font_color="#1a2433", legend_title_text="Metric", yaxis_range=[0, 105]
                 )
                 st.plotly_chart(fig_pct, use_container_width=True)
 
@@ -611,7 +615,7 @@ else:
                 )
                 fig_ms.update_layout(
                     plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
-                    font_color="#ffffff"
+                    font_color="#1a2433"
                 )
                 st.plotly_chart(fig_ms, use_container_width=True)
 
@@ -659,41 +663,48 @@ else:
 
         top_v, avg_v, bottom_v = norms.get("Top 25%"), norms.get("Average 50%"), norms.get("Bottom 25%")
 
-        gauge_min = 0.0 if pos_metric != "MS" else 1.0
-        gauge_max = score_max
-        zone_low = bottom_v if bottom_v is not None else gauge_min
-        zone_high = top_v if top_v is not None else gauge_max
+        axis_min = 0.0 if pos_metric != "MS" else 1.0
+        axis_max = score_max
+        zone_low = bottom_v if bottom_v is not None else axis_min
+        zone_high = top_v if top_v is not None else axis_max
 
-        fig_gauge = go.Figure(go.Indicator(
-            mode="gauge+number",
-            value=input_score,
-            number={"suffix": "" if pos_metric == "MS" else "%", "font": {"color": "#ffffff", "size": 36}},
-            gauge={
-                "axis": {"range": [gauge_min, gauge_max], "tickcolor": "#ffffff"},
-                "bar": {"color": "#ffffff", "thickness": 0.25},
-                "steps": [
-                    {"range": [gauge_min, zone_low], "color": "#5c2020"},
-                    {"range": [zone_low, zone_high], "color": "#20385b"},
-                    {"range": [zone_high, gauge_max], "color": "#1d5c3c"},
-                ],
-                "threshold": {"line": {"color": "#ffd34d", "width": 4}, "thickness": 0.9, "value": input_score},
-            }
+        unit = "" if pos_metric == "MS" else "%"
+        fmt = lambda v: f"{v:.2f}{unit}" if v is not None else "-"
+
+        # Ruler horizontal: 3 segmen warna (Bawah Norm / Sesuai Norm / Atas Norm)
+        # + garis vertikal menandai posisi skor produk.
+        fig_ruler = go.Figure()
+        fig_ruler.add_trace(go.Bar(
+            x=[max(zone_low - axis_min, 0.001)], y=["Posisi"], orientation="h",
+            marker_color="#e3787a", text=["Bawah Norm"], textposition="inside",
+            insidetextanchor="middle", textfont=dict(color="white", size=13),
+            hoverinfo="skip", showlegend=False
         ))
-        fig_gauge.update_layout(
-            paper_bgcolor="rgba(0,0,0,0)", font_color="#ffffff",
-            height=300, margin=dict(t=30, b=10, l=30, r=30)
+        fig_ruler.add_trace(go.Bar(
+            x=[max(zone_high - zone_low, 0.001)], y=["Posisi"], orientation="h",
+            marker_color="#9fb8d6", text=["Sesuai Norm"], textposition="inside",
+            insidetextanchor="middle", textfont=dict(color="#1a2433", size=13),
+            hoverinfo="skip", showlegend=False
+        ))
+        fig_ruler.add_trace(go.Bar(
+            x=[max(axis_max - zone_high, 0.001)], y=["Posisi"], orientation="h",
+            marker_color="#5bbf8a", text=["Atas Norm"], textposition="inside",
+            insidetextanchor="middle", textfont=dict(color="white", size=13),
+            hoverinfo="skip", showlegend=False
+        ))
+        fig_ruler.update_layout(barmode="stack", height=130,
+            margin=dict(t=10, b=30, l=10, r=10),
+            plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+            font_color="#1a2433", showlegend=False,
+            xaxis=dict(range=[axis_min, axis_max], showgrid=False, fixedrange=True),
+            yaxis=dict(visible=False)
         )
-        st.plotly_chart(fig_gauge, use_container_width=True)
-
-        ref1, ref2, ref3 = st.columns(3)
-        with ref1:
-            st.caption(f"Bottom 25% norm: {'-' if bottom_v is None else (f'{bottom_v:.2f}' if pos_metric=='MS' else f'{bottom_v:.2f}%')}")
-        with ref2:
-            st.caption(f"Average 50% norm: {'-' if avg_v is None else (f'{avg_v:.2f}' if pos_metric=='MS' else f'{avg_v:.2f}%')}")
-        with ref3:
-            st.caption(f"Top 25% norm: {'-' if top_v is None else (f'{top_v:.2f}' if pos_metric=='MS' else f'{top_v:.2f}%')}")
-
-        st.caption("Catatan: posisi ini menunjukkan zona (di bawah / sesuai / di atas norm), bukan persentil presisi, karena norm dasarnya adalah rata-rata kelompok Top 25%/Average 50%/Bottom 25%, bukan data individu.")
+        fig_ruler.add_shape(type="line", x0=input_score, x1=input_score, y0=-0.5, y1=0.5,
+            line=dict(color="#1a2433", width=3, dash="solid"))
+        fig_ruler.add_annotation(x=input_score, y=0.62, text=f"▼ Skor Anda: {fmt(input_score)}",
+            showarrow=False, font=dict(size=13, color="#1a2433", family="Arial Black"))
+        st.plotly_chart(fig_ruler, use_container_width=True)
+        st.caption(f"Batas Bawah Norm: {fmt(bottom_v)} • Batas Atas Norm: {fmt(top_v)} — di antara keduanya = Sesuai Norm.")
 
 
 
