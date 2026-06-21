@@ -217,7 +217,14 @@ if selected_scale < 7:
 selected_metric = st.sidebar.selectbox("Metric", metric_options)
 
 st.sidebar.divider()
-st.sidebar.subheader("🗂️ Filter Dimensi (opsional)")
+
+col_clear, col_title = st.sidebar.columns([1, 2])
+col_title.subheader("🗂️ Filter Dimensi")
+if col_clear.button("🗑️ Clear", use_container_width=True, help="Reset semua filter dimensi"):
+    for col in FILTER_COLS:
+        key = f"filter_{col}"
+        if key in st.session_state:
+            st.session_state[key] = []
 
 # Filter dimensi bebas
 active_filters = {}
@@ -236,10 +243,11 @@ for col in FILTER_COLS:
         continue
     selected_vals = st.sidebar.multiselect(
         col,
-        options=["(Semua)"] + unique_vals,
-        default=["(Semua)"]
+        options=unique_vals,
+        default=[],
+        key=f"filter_{col}"
     )
-    if selected_vals and "(Semua)" not in selected_vals:
+    if selected_vals:
         active_filters[col] = selected_vals
 
 # Terapkan semua filter dimensi
