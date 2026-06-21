@@ -500,15 +500,34 @@ else:
         unsafe_allow_html=True
     )
 
-    st.caption("Rata-rata Norm Value per Metric (dipisah, karena MS berskala 1-9 sedangkan metric % berskala 0-100):")
+    st.caption(
+        "Norm Value per Norm Grade × Metric (tidak dicampur). Kalau Filter Type/Filter Value "
+        "yang dipilih lebih dari satu, nilainya jadi weighted average dibobot Base N tiap kombinasi."
+    )
 
-    metrics_in_result = sorted(result_df["metric"].dropna().unique())
-    metric_cols = st.columns(len(metrics_in_result)) if metrics_in_result else []
-    for col, met in zip(metric_cols, metrics_in_result):
-        met_avg = result_df.loc[result_df["metric"] == met, "norm_value"].mean(skipna=True)
-        met_display = "-" if pd.isna(met_avg) else (f"{met_avg:.2f}" if met == "MS" else f"{met_avg:.2f}%")
-        with col:
-            st.markdown(metric_card(met, met_display), unsafe_allow_html=True)
+    grade_display_order = ["Top 25%", "Average 50%", "Bottom 25%"]
+    metric_display_order = ["TB%", "T2B%", "T3B%", "MS"]
+    grades_in_result = [g for g in grade_display_order if g in result_df["norm_grade"].unique()]
+    metrics_in_result = [m for m in metric_display_order if m in result_df["metric"].unique()]
+
+    pivot_rows = []
+    for grade in grades_in_result:
+        row = {"Norm Grade": grade}
+        for met in metrics_in_result:
+            cell_df = result_df[
+                (result_df["norm_grade"] == grade) & (result_df["metric"] == met)
+            ].dropna(subset=["norm_value"])
+
+            weight_sum = cell_df["base_n"].sum(skipna=True)
+            if cell_df.empty or pd.isna(weight_sum) or weight_sum == 0:
+                row[met] = "-"
+            else:
+                weighted_avg = (cell_df["norm_value"] * cell_df["base_n"]).sum() / weight_sum
+                row[met] = f"{weighted_avg:.2f}" if met == "MS" else f"{weighted_avg:.2f}%"
+        pivot_rows.append(row)
+
+    pivot_df = pd.DataFrame(pivot_rows)
+    st.dataframe(pivot_df, use_container_width=True, hide_index=True)
 
     filter_types_in_result = sorted(result_df["filter_type"].dropna().unique())
     if len(filter_types_in_result) > 1:
@@ -518,6 +537,8 @@ else:
             "responden yang sama lebih dari sekali karena tiap Filter Type adalah sudut pandang "
             "segmentasi yang berbeda. Untuk angka Base N yang presisi, pilih satu Filter Type saja."
         )
+
+
 
 
 # =====================================
