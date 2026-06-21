@@ -14,7 +14,7 @@ st.set_page_config(
     layout="wide"
 )
 
-RAW_DATA_PATH = "Deka_Insight_Data_For_Norm_Database.xlsx"
+RAW_DATA_PATH = Path(__file__).parent / "Deka_Insight_Data_For_Norm_Database.xlsx"
 
 FILTER_COLS = [
     "Category", "Sub-Category", "Detail Product", "Gender",
