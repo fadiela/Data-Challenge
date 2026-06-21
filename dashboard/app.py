@@ -486,25 +486,39 @@ elif len(result_df) == 1:
     with m2:
         st.markdown(metric_card("Base N", base_n_display), unsafe_allow_html=True)
 else:
-    avg_norm_value = result_df["norm_value"].mean(skipna=True)
-    total_base_n = result_df["base_n"].sum(skipna=True)
-
-    avg_norm_display = "-" if pd.isna(avg_norm_value) else f"{avg_norm_value:.2f}"
+    # Base N berulang persis sama untuk tiap Metric pada kombinasi
+    # (Norm Grade x Filter Type x Filter Value) yang sama, jadi sebelum
+    # dijumlah, dedupe dulu biar tidak dihitung 4x (sekali per metric).
+    unique_base_df = result_df.drop_duplicates(
+        subset=["parameter_name", "scale_value", "norm_grade", "filter_type", "filter_value"]
+    )
+    total_base_n = unique_base_df["base_n"].sum(skipna=True)
     total_base_n_display = "-" if pd.isna(total_base_n) else f"{int(total_base_n)}"
 
-    m1, m2 = st.columns(2)
-    with m1:
-        st.markdown(metric_card(f"Rata-rata Norm Value ({len(result_df)} baris)", avg_norm_display), unsafe_allow_html=True)
-    with m2:
-        st.markdown(metric_card(f"Total Base N ({len(result_df)} baris)", total_base_n_display), unsafe_allow_html=True)
+    st.markdown(
+        metric_card(f"Total Base N ({len(unique_base_df)} kombinasi unik)", total_base_n_display),
+        unsafe_allow_html=True
+    )
+
+    st.caption("Rata-rata Norm Value per Metric (dipisah, karena MS berskala 1-9 sedangkan metric % berskala 0-100):")
 
     metrics_in_result = sorted(result_df["metric"].dropna().unique())
-    if len(metrics_in_result) > 1:
+    metric_cols = st.columns(len(metrics_in_result)) if metrics_in_result else []
+    for col, met in zip(metric_cols, metrics_in_result):
+        met_avg = result_df.loc[result_df["metric"] == met, "norm_value"].mean(skipna=True)
+        met_display = "-" if pd.isna(met_avg) else (f"{met_avg:.2f}" if met == "MS" else f"{met_avg:.2f}%")
+        with col:
+            st.markdown(metric_card(met, met_display), unsafe_allow_html=True)
+
+    filter_types_in_result = sorted(result_df["filter_type"].dropna().unique())
+    if len(filter_types_in_result) > 1:
         st.caption(
-            "⚠️ Rata-rata Norm Value di atas menggabungkan beberapa Metric sekaligus "
-            f"({', '.join(metrics_in_result)}), yang skalanya berbeda (MS = 1-9, %-metric = 0-100). "
-            "Untuk angka per Metric/Norm Grade yang lebih akurat, lihat tabel detail di bawah."
+            "⚠️ Kombinasi ini mencakup lebih dari satu Filter Type sekaligus "
+            f"({', '.join(filter_types_in_result)}). Total Base N di atas berpotensi menghitung "
+            "responden yang sama lebih dari sekali karena tiap Filter Type adalah sudut pandang "
+            "segmentasi yang berbeda. Untuk angka Base N yang presisi, pilih satu Filter Type saja."
         )
+
 
 # =====================================
 # DETAIL TABLE
