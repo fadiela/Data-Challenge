@@ -86,12 +86,15 @@ def join_or_dash(values, limit=4):
     return ", ".join(values)
 
 
-def cascading_multiselect(label, options, key_prefix, dep_key, default_all=True, help_text=None):
+def cascading_multiselect(label, options, key_prefix, dep_key, help_text=None):
     """
     Multiselect whose widget key changes whenever its upstream dependency
     (dep_key, anything hashable e.g. tuple of upstream selections) changes.
-    This forces Streamlit to re-evaluate the default (select-all) instead of
-    crashing because a previous selection no longer exists in the new options.
+    This forces Streamlit to re-evaluate the default instead of crashing
+    because a previous selection no longer exists in the new options.
+
+    Defaults to only the FIRST option selected (not select-all), so the
+    user starts narrow and explicitly adds more values if they want to.
     """
     options = sorted(options)
     widget_key = f"{key_prefix}__{hash(dep_key)}"
@@ -99,22 +102,7 @@ def cascading_multiselect(label, options, key_prefix, dep_key, default_all=True,
     # Only set an initial value the first time this widget_key appears
     # (i.e. right after upstream filters changed and produced a new key).
     if widget_key not in st.session_state:
-        st.session_state[widget_key] = options if default_all else []
-
-    top_row = st.columns([1, 1])
-    with top_row[0]:
-        select_all = st.button("Pilih Semua", key=f"{widget_key}_all", use_container_width=True)
-    with top_row[1]:
-        clear_all = st.button("Kosongkan", key=f"{widget_key}_clear", use_container_width=True)
-
-    # IMPORTANT: never pass `default=` together with a `key` whose value we
-    # also mutate via session_state in the same run - Streamlit raises an
-    # exception if both are set in one script execution. So selection state
-    # is managed entirely through session_state here.
-    if select_all:
-        st.session_state[widget_key] = options
-    if clear_all:
-        st.session_state[widget_key] = []
+        st.session_state[widget_key] = options[:1]
 
     selected = st.multiselect(
         label,
@@ -165,20 +153,6 @@ st.markdown("""
 
 [data-testid="stSidebar"] span[data-baseweb="tag"] {
     background-color: #2f6db5 !important;
-}
-
-[data-testid="stSidebar"] .stButton button {
-    background: #233d5c !important;
-    color: #ffffff !important;
-    border: 1px solid #3f5f86 !important;
-    border-radius: 8px !important;
-    font-size: 12px !important;
-    font-weight: 700 !important;
-    padding: 0.25rem 0.4rem !important;
-}
-
-[data-testid="stSidebar"] .stButton button:hover {
-    background: #2f547c !important;
 }
 
 /* Sidebar brand */
@@ -379,9 +353,13 @@ with st.sidebar:
 
     # ---- Metric (multi, checkbox-style) ----
     st.markdown('<div class="filter-group-label">Metric</div>', unsafe_allow_html=True)
-    metric_options = ["TB%", "T2B%", "T3B%", "MS"]
+    # T3B% hanya valid untuk skala 7 ke atas (lihat dokumen "Penjelasan TB/T2B/T3B/MS")
+    metric_options = ["TB%", "T2B%", "MS"]
+    if int(selected_scale) >= 7:
+        metric_options.append("T3B%")
     selected_metrics = cascading_multiselect(
-        "Metric", metric_options, "sel_metric", dep_key="static"
+        "Metric", metric_options, "sel_metric",
+        dep_key=("metric_ge7" if int(selected_scale) >= 7 else "metric_lt7")
     )
 
     # ---- Filter Type (multi, checkbox-style, cascades on Parameter+Scale) ----
