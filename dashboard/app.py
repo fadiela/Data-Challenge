@@ -155,6 +155,35 @@ def cascading_multiselect(label, options, key_prefix, dep_key, help_text=None):
     return selected
 
 
+# ---- Kombinasi 2-dimensi (mis. "Category + Gender" / "Food | Perempuan") ----
+COMBO_SEP_TYPE = " + "
+COMBO_SEP_VALUE = " | "
+
+
+def is_combo_filter_type(filter_type: str) -> bool:
+    return COMBO_SEP_TYPE in str(filter_type)
+
+
+def split_combo_type(filter_type: str):
+    """'Category + Gender' -> ('Category', 'Gender')"""
+    a, b = str(filter_type).split(COMBO_SEP_TYPE, 1)
+    return a, b
+
+
+def split_combo_value(filter_value: str):
+    """'Food | Perempuan' -> ('Food', 'Perempuan')"""
+    a, b = str(filter_value).split(COMBO_SEP_VALUE, 1)
+    return a, b
+
+
+def make_combo_type(dim_a: str, dim_b: str) -> str:
+    return f"{dim_a}{COMBO_SEP_TYPE}{dim_b}"
+
+
+def make_combo_value(val_a: str, val_b: str) -> str:
+    return f"{val_a}{COMBO_SEP_VALUE}{val_b}"
+
+
 # =====================================
 # CUSTOM CSS
 # =====================================
@@ -239,6 +268,22 @@ st.markdown("""
     color: #2f6db5;
     margin-top: 18px;
     margin-bottom: 4px;
+}
+
+/* Filter mode radio (Single Dimension / Kombinasi 2 Dimensi) */
+[data-testid="stSidebar"] div[role="radiogroup"] {
+    background: #f5f7fa;
+    border: 1px solid #d6dde8;
+    border-radius: 10px;
+    padding: 6px 10px;
+    margin-bottom: 6px;
+}
+
+.combo-hint {
+    font-size: 12px;
+    color: #5a7088;
+    margin: -2px 0 10px 0;
+    line-height: 1.4;
 }
 
 /* Title */
@@ -434,29 +479,132 @@ with st.sidebar:
         dep_key=("metric_ge7" if int(selected_scale) >= 7 else "metric_lt7")
     )
 
-    # ---- Filter Type (multi, checkbox-style, cascades on Parameter+Scale) ----
-    st.markdown('<div class="filter-group-label">Filter Type</div>', unsafe_allow_html=True)
-    filter_type_options = df[
-        (df["parameter_name"] == selected_parameter) &
-        (df["scale_value"] == selected_scale)
-    ]["filter_type"].dropna().unique().tolist()
-    selected_filter_types = cascading_multiselect(
-        "Filter Type", filter_type_options, "sel_filter_type",
-        dep_key=(selected_parameter, selected_scale)
+    # ---- Mode Filter: Single Dimension vs Kombinasi 2 Dimensi ----
+    st.markdown('<div class="filter-group-label">Mode Filter</div>', unsafe_allow_html=True)
+    filter_mode = st.radio(
+        "Mode Filter",
+        ["Single Dimension", "Kombinasi 2 Dimensi"],
+        key="filter_mode",
+        label_visibility="collapsed",
+        horizontal=False,
     )
 
-    # ---- Filter Value (multi, checkbox-style, cascades on Parameter+Scale+Filter Type) ----
-    st.markdown('<div class="filter-group-label">Filter Value</div>', unsafe_allow_html=True)
-    fval_pool = df[
+    # Pool data untuk parameter+scale yang dipilih (dipakai kedua mode)
+    base_pool = df[
         (df["parameter_name"] == selected_parameter) &
-        (df["scale_value"] == selected_scale) &
-        (df["filter_type"].isin(selected_filter_types))
-    ] if selected_filter_types else df.iloc[0:0]
-    filter_value_options = fval_pool["filter_value"].dropna().unique().tolist()
-    selected_filter_values = cascading_multiselect(
-        "Filter Value", filter_value_options, "sel_filter_value",
-        dep_key=(selected_parameter, selected_scale, tuple(sorted(selected_filter_types)))
-    )
+        (df["scale_value"] == selected_scale)
+    ]
+
+    if filter_mode == "Single Dimension":
+        # ---- Filter Type (multi, checkbox-style, cascades on Parameter+Scale) ----
+        st.markdown('<div class="filter-group-label">Filter Type</div>', unsafe_allow_html=True)
+        filter_type_options = base_pool[
+            ~base_pool["filter_type"].apply(is_combo_filter_type)
+        ]["filter_type"].dropna().unique().tolist()
+        selected_filter_types = cascading_multiselect(
+            "Filter Type", filter_type_options, "sel_filter_type",
+            dep_key=(selected_parameter, selected_scale)
+        )
+
+        # ---- Filter Value (multi, checkbox-style, cascades on Filter Type) ----
+        st.markdown('<div class="filter-group-label">Filter Value</div>', unsafe_allow_html=True)
+        fval_pool = base_pool[
+            base_pool["filter_type"].isin(selected_filter_types)
+        ] if selected_filter_types else base_pool.iloc[0:0]
+        filter_value_options = fval_pool["filter_value"].dropna().unique().tolist()
+        selected_filter_values = cascading_multiselect(
+            "Filter Value", filter_value_options, "sel_filter_value",
+            dep_key=(selected_parameter, selected_scale, tuple(sorted(selected_filter_types)))
+        )
+
+    else:
+        # ---- Mode Kombinasi: pilih Dimensi A + Value A, Dimensi B + Value B ----
+        # secara terpisah lewat dropdown biasa (user tidak perlu tahu format
+        # gabungan "Category + Gender" / "Food | Perempuan" secara manual).
+        st.markdown(
+            '<div class="combo-hint">Pilih 2 dimensi sekaligus, mis. <b>Category</b> = Food '
+            '<b>dan</b> <b>Gender</b> = Perempuan, untuk melihat norm pada irisan keduanya.</div>',
+            unsafe_allow_html=True
+        )
+
+        combo_types_in_pool = base_pool[
+            base_pool["filter_type"].apply(is_combo_filter_type)
+        ]["filter_type"].dropna().unique().tolist()
+
+        # Kumpulkan semua dimensi tunggal yang punya minimal 1 kombinasi tersedia
+        all_dims = sorted({
+            dim for ft in combo_types_in_pool for dim in split_combo_type(ft)
+        })
+
+        if not all_dims:
+            st.warning("Tidak ada data kombinasi untuk Parameter & Scale ini.")
+            selected_filter_types, selected_filter_values = [], []
+        else:
+            st.markdown('<div class="filter-group-label">Dimensi A</div>', unsafe_allow_html=True)
+            dim_a_key = f"combo_dim_a__{hash((selected_parameter, selected_scale))}"
+            if dim_a_key not in st.session_state:
+                st.session_state[dim_a_key] = all_dims[0]
+            dim_a = st.selectbox("Dimensi A", all_dims, key=dim_a_key, label_visibility="collapsed")
+
+            # Dimensi B hanya menampilkan pasangan yang benar-benar ada datanya dengan Dimensi A
+            dim_b_options = sorted({
+                (set(split_combo_type(ft)) - {dim_a}).pop()
+                for ft in combo_types_in_pool if dim_a in split_combo_type(ft)
+            })
+
+            st.markdown('<div class="filter-group-label">Dimensi B</div>', unsafe_allow_html=True)
+            dim_b_key = f"combo_dim_b__{hash((selected_parameter, selected_scale, dim_a))}"
+            if dim_b_key not in st.session_state:
+                st.session_state[dim_b_key] = dim_b_options[0] if dim_b_options else None
+            dim_b = st.selectbox(
+                "Dimensi B", dim_b_options, key=dim_b_key, label_visibility="collapsed"
+            ) if dim_b_options else None
+
+            if dim_b is None:
+                st.warning("Tidak ada pasangan kombinasi untuk Dimensi A ini.")
+                selected_filter_types, selected_filter_values = [], []
+            else:
+                # filter_type di database tersimpan 1 arah saja (urutan sesuai
+                # COMBO_DIMENSIONS saat database dibuat) -> coba kedua arah.
+                resolved_combo_type = (
+                    make_combo_type(dim_a, dim_b)
+                    if make_combo_type(dim_a, dim_b) in combo_types_in_pool
+                    else make_combo_type(dim_b, dim_a)
+                )
+                order_a_first = resolved_combo_type == make_combo_type(dim_a, dim_b)
+
+                combo_pool = base_pool[base_pool["filter_type"] == resolved_combo_type]
+                pair_values = combo_pool["filter_value"].dropna().unique().tolist()
+                parsed_pairs = [split_combo_value(v) for v in pair_values]
+
+                val_a_options = sorted({(p[0] if order_a_first else p[1]) for p in parsed_pairs})
+                st.markdown('<div class="filter-group-label">Value Dimensi A</div>', unsafe_allow_html=True)
+                val_a_selected = cascading_multiselect(
+                    "Value Dimensi A", val_a_options, "sel_combo_val_a",
+                    dep_key=(selected_parameter, selected_scale, dim_a, dim_b)
+                )
+
+                val_b_options = sorted({
+                    (p[1] if order_a_first else p[0])
+                    for p in parsed_pairs
+                    if (p[0] if order_a_first else p[1]) in val_a_selected
+                }) if val_a_selected else []
+                st.markdown('<div class="filter-group-label">Value Dimensi B</div>', unsafe_allow_html=True)
+                val_b_selected = cascading_multiselect(
+                    "Value Dimensi B", val_b_options, "sel_combo_val_b",
+                    dep_key=(selected_parameter, selected_scale, dim_a, dim_b, tuple(sorted(val_a_selected)))
+                )
+
+                selected_filter_types = [resolved_combo_type] if (val_a_selected and val_b_selected) else []
+                if val_a_selected and val_b_selected:
+                    selected_filter_values = [
+                        make_combo_value(va, vb) if order_a_first else make_combo_value(vb, va)
+                        for va in val_a_selected for vb in val_b_selected
+                    ]
+                    # hanya pertahankan pasangan yang benar-benar ada di data
+                    selected_filter_values = [v for v in selected_filter_values if v in pair_values]
+                else:
+                    selected_filter_values = []
 
 # =====================================
 # FILTER DATA -> SATU TABEL GABUNGAN
