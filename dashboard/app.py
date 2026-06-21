@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import io
 
 # =====================================
@@ -69,13 +70,53 @@ def summary_card(label, value):
     """
 
 
-def metric_card(label, value):
+def metric_card(label, value, tone=None):
+    """tone: None (default navy) | 'good' | 'avg' | 'bad' -> changes border/accent color."""
+    tone_class = f" metric-card--{tone}" if tone else ""
     return f"""
-    <div class="metric-card">
+    <div class="metric-card{tone_class}">
         <div class="metric-label">{label}</div>
         <div class="metric-value">{value}</div>
     </div>
     """
+
+
+def positioning_badge(label, tone):
+    return f"""
+    <div class="pos-badge pos-badge--{tone}">{label}</div>
+    """
+
+
+GRADE_TONE = {"Top 25%": "good", "Average 50%": "avg", "Bottom 25%": "bad"}
+
+
+def weighted_grade_values(source_df, metric):
+    """Hitung weighted-average norm_value per Norm Grade untuk satu metric tertentu,
+    dari source_df yang sudah difilter parameter/scale/filter_type/filter_value
+    (TANPA filter Norm Grade, supaya selalu dapat Top25/Avg50/Bottom25 lengkap)."""
+    out = {}
+    for grade in ["Top 25%", "Average 50%", "Bottom 25%"]:
+        cell_df = source_df[
+            (source_df["norm_grade"] == grade) & (source_df["metric"] == metric)
+        ].dropna(subset=["norm_value"])
+        weight_sum = cell_df["base_n"].sum(skipna=True)
+        if cell_df.empty or pd.isna(weight_sum) or weight_sum == 0:
+            out[grade] = None
+        else:
+            out[grade] = (cell_df["norm_value"] * cell_df["base_n"]).sum() / weight_sum
+    return out
+
+
+def classify_score(score, norms):
+    """norms: dict dengan 'Top 25%', 'Average 50%', 'Bottom 25%'. Return (label, tone)."""
+    top, bottom = norms.get("Top 25%"), norms.get("Bottom 25%")
+    if top is None or bottom is None:
+        return "Data norm tidak lengkap untuk posisi ini", "avg"
+    if score >= top:
+        return "Di Atas Norm — sejajar grup Top 25% (disukai)", "good"
+    if score <= bottom:
+        return "Di Bawah Norm — sejajar grup Bottom 25% (kurang disukai)", "bad"
+    return "Sesuai Norm — sejajar grup Average 50%", "avg"
 
 
 def join_or_dash(values, limit=4):
@@ -263,6 +304,33 @@ st.markdown("""
     color: #ffffff;
     line-height: 1.1;
 }
+
+/* Tone variants — dipakai untuk menandai posisi norm (good/avg/bad) */
+.metric-card--good {
+    background: linear-gradient(135deg, #103a26 0%, #1d5c3c 100%);
+    border: 1px solid #2f9e66;
+}
+.metric-card--avg {
+    background: linear-gradient(135deg, #16263d 0%, #20385b 100%);
+    border: 1px solid #35537d;
+}
+.metric-card--bad {
+    background: linear-gradient(135deg, #3a1414 0%, #5c2020 100%);
+    border: 1px solid #c0504d;
+}
+
+/* Positioning badge */
+.pos-badge {
+    display: inline-block;
+    padding: 10px 18px;
+    border-radius: 999px;
+    font-weight: 900;
+    font-size: 16px;
+    margin-bottom: 14px;
+}
+.pos-badge--good { background: #1d5c3c; color: #b6f3d2; border: 1px solid #2f9e66; }
+.pos-badge--avg  { background: #20385b; color: #d4e6fb; border: 1px solid #35537d; }
+.pos-badge--bad  { background: #5c2020; color: #fbd4d4; border: 1px solid #c0504d; }
 
 /* Section title */
 .section-title {
@@ -459,7 +527,7 @@ elif len(result_df) == 1:
 
     m1, m2 = st.columns(2)
     with m1:
-        st.markdown(metric_card("Norm Value", norm_display), unsafe_allow_html=True)
+        st.markdown(metric_card("Norm Value", norm_display, tone=GRADE_TONE.get(row["norm_grade"])), unsafe_allow_html=True)
     with m2:
         st.markdown(metric_card("Base N", base_n_display), unsafe_allow_html=True)
 else:
@@ -546,6 +614,86 @@ else:
                     font_color="#ffffff"
                 )
                 st.plotly_chart(fig_ms, use_container_width=True)
+
+
+# =====================================
+# POSISI SKOR PRODUK (apakah disukai / tidak vs norm)
+# Independen dari pilihan Norm Grade di sidebar — selalu menarik
+# Top 25% / Average 50% / Bottom 25% lengkap untuk jadi acuan posisi.
+# =====================================
+st.markdown('<div class="section-title">Bandingkan Skor Produk Anda</div>', unsafe_allow_html=True)
+
+if not selected_filter_types or not selected_filter_values:
+    st.info("Pilih minimal satu Filter Type dan Filter Value pada sidebar untuk membandingkan skor.")
+else:
+    base_filtered_df = df[
+        (df["parameter_name"] == selected_parameter) &
+        (df["scale_value"] == selected_scale) &
+        (df["filter_type"].isin(selected_filter_types)) &
+        (df["filter_value"].isin(selected_filter_values))
+    ]
+
+    pos_metric_options = ["TB%", "T2B%", "MS"]
+    if int(selected_scale) >= 7:
+        pos_metric_options.append("T3B%")
+
+    pc1, pc2 = st.columns([1, 1])
+    with pc1:
+        pos_metric = st.selectbox("Metric acuan posisi", pos_metric_options, key="pos_metric")
+    with pc2:
+        score_max = float(selected_scale) if pos_metric == "MS" else 100.0
+        score_step = 0.01
+        score_default = round(score_max / 2, 2)
+        input_score = st.number_input(
+            f"Skor produk Anda ({'skala 1-' + selected_scale if pos_metric == 'MS' else '%'})",
+            min_value=0.0, max_value=score_max, value=score_default, step=score_step
+        )
+
+    norms = weighted_grade_values(base_filtered_df, pos_metric)
+
+    if all(v is None for v in norms.values()):
+        st.warning("Tidak ada data norm untuk kombinasi filter & metric ini.")
+    else:
+        label, tone = classify_score(input_score, norms)
+        st.markdown(positioning_badge(label, tone), unsafe_allow_html=True)
+
+        top_v, avg_v, bottom_v = norms.get("Top 25%"), norms.get("Average 50%"), norms.get("Bottom 25%")
+
+        gauge_min = 0.0 if pos_metric != "MS" else 1.0
+        gauge_max = score_max
+        zone_low = bottom_v if bottom_v is not None else gauge_min
+        zone_high = top_v if top_v is not None else gauge_max
+
+        fig_gauge = go.Figure(go.Indicator(
+            mode="gauge+number",
+            value=input_score,
+            number={"suffix": "" if pos_metric == "MS" else "%", "font": {"color": "#ffffff", "size": 36}},
+            gauge={
+                "axis": {"range": [gauge_min, gauge_max], "tickcolor": "#ffffff"},
+                "bar": {"color": "#ffffff", "thickness": 0.25},
+                "steps": [
+                    {"range": [gauge_min, zone_low], "color": "#5c2020"},
+                    {"range": [zone_low, zone_high], "color": "#20385b"},
+                    {"range": [zone_high, gauge_max], "color": "#1d5c3c"},
+                ],
+                "threshold": {"line": {"color": "#ffd34d", "width": 4}, "thickness": 0.9, "value": input_score},
+            }
+        ))
+        fig_gauge.update_layout(
+            paper_bgcolor="rgba(0,0,0,0)", font_color="#ffffff",
+            height=300, margin=dict(t=30, b=10, l=30, r=30)
+        )
+        st.plotly_chart(fig_gauge, use_container_width=True)
+
+        ref1, ref2, ref3 = st.columns(3)
+        with ref1:
+            st.caption(f"Bottom 25% norm: {'-' if bottom_v is None else (f'{bottom_v:.2f}' if pos_metric=='MS' else f'{bottom_v:.2f}%')}")
+        with ref2:
+            st.caption(f"Average 50% norm: {'-' if avg_v is None else (f'{avg_v:.2f}' if pos_metric=='MS' else f'{avg_v:.2f}%')}")
+        with ref3:
+            st.caption(f"Top 25% norm: {'-' if top_v is None else (f'{top_v:.2f}' if pos_metric=='MS' else f'{top_v:.2f}%')}")
+
+        st.caption("Catatan: posisi ini menunjukkan zona (di bawah / sesuai / di atas norm), bukan persentil presisi, karena norm dasarnya adalah rata-rata kelompok Top 25%/Average 50%/Bottom 25%, bukan data individu.")
 
 
 
