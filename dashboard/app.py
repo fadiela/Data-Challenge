@@ -1,12 +1,13 @@
 import streamlit as st
 import pandas as pd
+import plotly.express as px
 import io
 
 # =====================================
 # PAGE CONFIG
 # =====================================
 st.set_page_config(
-    page_title="Norm Dashboard",
+    page_title="Deka Insight Norm Dashboard",
     page_icon="📊",
     layout="wide"
 )
@@ -328,7 +329,6 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
     st.header("Filter Benchmark")
-    st.caption("Norm Grade, Metric, Filter Type, dan Filter Value bisa pilih lebih dari satu.")
 
     # ---- Parameter (single, dropdown) ----
     parameter_options = sorted(df["parameter_name"].dropna().unique())
@@ -413,8 +413,7 @@ else:
 # =====================================
 # MAIN HEADER
 # =====================================
-st.markdown('<div class="page-title">📊 Norm Dashboard</div>', unsafe_allow_html=True)
-st.markdown('<div class="page-subtitle">Dashboard benchmark norm database berdasarkan hasil Python.</div>', unsafe_allow_html=True)
+st.markdown('<div class="page-title">📊 Deka Insight Norm Dashboard</div>', unsafe_allow_html=True)
 
 # =====================================
 # SUMMARY CARDS
@@ -478,17 +477,13 @@ else:
         unsafe_allow_html=True
     )
 
-    st.caption(
-        "Norm Value per Norm Grade × Metric (tidak dicampur). Kalau Filter Type/Filter Value "
-        "yang dipilih lebih dari satu, nilainya jadi weighted average dibobot Base N tiap kombinasi."
-    )
-
     grade_display_order = ["Top 25%", "Average 50%", "Bottom 25%"]
     metric_display_order = ["TB%", "T2B%", "T3B%", "MS"]
     grades_in_result = [g for g in grade_display_order if g in result_df["norm_grade"].unique()]
     metrics_in_result = [m for m in metric_display_order if m in result_df["metric"].unique()]
 
     pivot_rows = []
+    chart_records = []
     for grade in grades_in_result:
         row = {"Norm Grade": grade}
         for met in metrics_in_result:
@@ -502,6 +497,7 @@ else:
             else:
                 weighted_avg = (cell_df["norm_value"] * cell_df["base_n"]).sum() / weight_sum
                 row[met] = f"{weighted_avg:.2f}" if met == "MS" else f"{weighted_avg:.2f}%"
+                chart_records.append({"Norm Grade": grade, "Metric": met, "Value": weighted_avg})
         pivot_rows.append(row)
 
     pivot_df = pd.DataFrame(pivot_rows)
@@ -509,12 +505,51 @@ else:
 
     filter_types_in_result = sorted(result_df["filter_type"].dropna().unique())
     if len(filter_types_in_result) > 1:
-        st.caption(
-            "⚠️ Kombinasi ini mencakup lebih dari satu Filter Type sekaligus "
-            f"({', '.join(filter_types_in_result)}). Total Base N di atas berpotensi menghitung "
-            "responden yang sama lebih dari sekali karena tiap Filter Type adalah sudut pandang "
-            "segmentasi yang berbeda. Untuk angka Base N yang presisi, pilih satu Filter Type saja."
-        )
+        st.caption("⚠️ Total Base N bisa double-count karena lebih dari satu Filter Type dipilih sekaligus.")
+
+    # ---- Charts: persen metric (TB/T2B/T3B, skala 0-100) dan MS (skala 1-9)
+    # dipisah karena sumbu-y nya nggak sebanding kalau digabung.
+    chart_df = pd.DataFrame(chart_records)
+    if not chart_df.empty:
+        pct_chart_df = chart_df[chart_df["Metric"] != "MS"]
+        ms_chart_df = chart_df[chart_df["Metric"] == "MS"]
+
+        chart_col1, chart_col2 = st.columns(2) if (not pct_chart_df.empty and not ms_chart_df.empty) else (st.container(), None)
+
+        if not pct_chart_df.empty:
+            with chart_col1:
+                fig_pct = px.bar(
+                    pct_chart_df, x="Norm Grade", y="Value", color="Metric",
+                    barmode="group", text_auto=".1f",
+                    category_orders={"Norm Grade": grades_in_result, "Metric": [m for m in metric_display_order if m != "MS"]},
+                    labels={"Value": "Norm Value (%)"},
+                    title="Norm Value per Norm Grade (TB% / T2B% / T3B%)"
+                )
+                fig_pct.update_layout(
+                    plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+                    font_color="#ffffff", legend_title_text="Metric", yaxis_range=[0, 105]
+                )
+                st.plotly_chart(fig_pct, use_container_width=True)
+
+        if not ms_chart_df.empty:
+            target_col = chart_col2 if chart_col2 is not None else chart_col1
+            with target_col:
+                fig_ms = px.bar(
+                    ms_chart_df, x="Norm Grade", y="Value", text_auto=".2f",
+                    category_orders={"Norm Grade": grades_in_result},
+                    labels={"Value": "Mean Score"},
+                    title="Mean Score (MS) per Norm Grade",
+                    color_discrete_sequence=["#3f8fd9"]
+                )
+                fig_ms.update_layout(
+                    plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
+                    font_color="#ffffff"
+                )
+                st.plotly_chart(fig_ms, use_container_width=True)
+
+
+
+
 
 
 
